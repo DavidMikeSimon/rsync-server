@@ -1,56 +1,38 @@
 #!/bin/bash
 set -e
 
-USERNAME=${USERNAME:-user}
-PASSWORD=${PASSWORD:-pass}
-ALLOW=${ALLOW:-10.0.0.0/8 192.168.0.0/16 172.16.0.0/12 127.0.0.1/32}
-VOLUME=${VOLUME:-/data}
-
-
-setup_sshd(){
-	if [ -e "/root/.ssh/authorized_keys" ]; then
-        chmod 400 /root/.ssh/authorized_keys
-        chown root:root /root/.ssh/authorized_keys
-    else
-		mkdir -p /root/.ssh
-		chown root:root /root/.ssh
-    fi
-    chmod 750 /root/.ssh
-    echo "root:$PASSWORD" | chpasswd
-}
-
-setup_rsyncd(){
-	echo "$USERNAME:$PASSWORD" > /etc/rsyncd.secrets
-    chmod 0400 /etc/rsyncd.secrets
-	[ -f /etc/rsyncd.conf ] || cat > /etc/rsyncd.conf <<EOF
-log file = /dev/stdout
-timeout = 300
-max connections = 10
-port = 873
-
-[volume]
-	uid = root
-	gid = root
-	hosts deny = *
-	hosts allow = ${ALLOW}
-	read only = false
-	path = ${VOLUME}
-	comment = ${VOLUME} directory
-	auth users = ${USERNAME}
-	secrets file = /etc/rsyncd.secrets
-EOF
-}
-
-
-if [ "$1" = 'rsync_server' ]; then
-    setup_sshd
-    exec /usr/sbin/sshd &
-    mkdir -p $VOLUME
-    setup_rsyncd
-    exec /usr/bin/rsync --no-detach --daemon --config /etc/rsyncd.conf "$@"
+if [ -e "/config" ]; then
+  if [ ! -e "/config/sshd_config" ]; then
+    print "Copying initial ssh config"
+    cp -a /etc/ssh-template/* /config/
+  fi
 else
-	setup_sshd
-	exec /usr/sbin/sshd &
+  print "No /config folder found"
+  exit 1
 fi
 
-exec "$@"
+
+if [ ! -e /home/$USER_NAME ]; then
+  print "Creating user $USER_NAME"
+  adduser --disabled-password --gid $PGID --uid $PUID $USER_NAME
+fi
+
+if [ ! -e /config/dot-ssh ]; then
+  print "Creating /config/dot-ssh"
+  mkdir -p /config/dot-ssh
+  chown $USER_NAME:$USER_NAME /config/dot-ssh
+  chmod 750 /config/dot-ssh
+fi
+
+if [ ! -e /config/dot-ssh/authorized_keys ]; then
+  print "Creating /config/dot-ssh/authorized_keys"
+  touch /config/dot-ssh/authorized_keys
+  chown $USER_NAME:$USER_NAME /config/dot-ssh/authorized_keys
+  chmod 400 /config/dot-ssh/authorized_keys
+fi
+
+if [ ! -e /home/$USER_NAME/.ssh ]; then
+  ln -s /config/dot-ssh /home/$USER_NAME/.ssh
+fi
+
+exec /usr/sbin/sshd -D -e -p 2222
