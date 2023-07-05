@@ -14,6 +14,7 @@ fi
 
 if [ ! -e /home/$USER_NAME ]; then
   echo "Creating user $USER_NAME"
+  addgroup --gid $PGID $USER_NAME
   adduser --disabled-password --gid $PGID --uid $PUID $USER_NAME
 fi
 
