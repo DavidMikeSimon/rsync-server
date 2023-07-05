@@ -3,29 +3,29 @@ set -e
 
 if [ -e "/config" ]; then
   if [ ! -e "/config/sshd_config" ]; then
-    print "Copying initial ssh config"
+    echo "Copying initial ssh config"
     cp -a /etc/ssh-template/* /config/
   fi
 else
-  print "No /config folder found"
+  echo "No /config folder found"
   exit 1
 fi
 
 
 if [ ! -e /home/$USER_NAME ]; then
-  print "Creating user $USER_NAME"
+  echo "Creating user $USER_NAME"
   adduser --disabled-password --gid $PGID --uid $PUID $USER_NAME
 fi
 
 if [ ! -e /config/dot-ssh ]; then
-  print "Creating /config/dot-ssh"
+  echo "Creating /config/dot-ssh"
   mkdir -p /config/dot-ssh
   chown $USER_NAME:$USER_NAME /config/dot-ssh
   chmod 750 /config/dot-ssh
 fi
 
 if [ ! -e /config/dot-ssh/authorized_keys ]; then
-  print "Creating /config/dot-ssh/authorized_keys"
+  echo "Creating /config/dot-ssh/authorized_keys"
   touch /config/dot-ssh/authorized_keys
   chown $USER_NAME:$USER_NAME /config/dot-ssh/authorized_keys
   chmod 400 /config/dot-ssh/authorized_keys
